@@ -1,0 +1,146 @@
+import tkinter as tk
+from tkinter import messagebox
+from datetime import datetime, timedelta
+import sqlite3
+
+# -------------------- SETUP DATABASE --------------------
+conn = sqlite3.connect('perpustakaan.db')
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS peminjaman (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nama TEXT NOT NULL,
+    buku TEXT NOT NULL,
+    tgl_pinjam TEXT NOT NULL,
+    tgl_kembali TEXT NOT NULL
+)
+""")
+conn.commit()
+
+# -------------------- FUNGSI --------------------
+def pinjam_buku():
+    nama = entry_nama.get().strip()
+    buku = listbox.get(tk.ACTIVE)
+
+    print(f"[DEBUG] Nama: {nama}, Buku: {buku}")  # Untuk melihat input
+
+    if not nama:
+        messagebox.showwarning("⚠️ Peringatan", "Nama harus diisi!")
+        return
+
+    if not buku:
+        messagebox.showwarning("⚠️ Peringatan", "Silakan pilih buku terlebih dahulu.")
+        return
+
+    tgl_pinjam = datetime.today().strftime("%d-%m-%Y")
+    tgl_kembali = (datetime.today() + timedelta(days=7)).strftime("%d-%m-%Y")
+    hasil = f"{nama} | {buku} | {tgl_pinjam} → {tgl_kembali}"
+    list_output.insert(tk.END, hasil)
+
+    # Simpan ke database
+    cursor.execute("INSERT INTO peminjaman (nama, buku, tgl_pinjam, tgl_kembali) VALUES (?, ?, ?, ?)",
+                   (nama, buku, tgl_pinjam, tgl_kembali))
+    conn.commit()
+    print("[DEBUG] Data berhasil disimpan ke database.")
+
+def kembalikan_buku():
+    selected = list_output.curselection()
+    if selected:
+        list_output.delete(selected[0])
+
+# -------------------- GUI UTAMA --------------------
+root = tk.Tk()
+root.title("📚 Sistem Peminjaman Buku Digital")
+root.geometry("800x500")
+root.configure(bg="#f5faff")
+
+# -------------------- Judul --------------------
+label_judul = tk.Label(
+    root,
+    text="📖 PERPUSTAKAAN DIGITAL",
+    font=("Segoe UI", 18, "bold"),
+    bg="#f5faff",
+    fg="#2c3e50"
+)
+label_judul.pack(pady=10)
+
+# -------------------- Frame Utama --------------------
+frame_utama = tk.Frame(root, bg="#f5faff")
+frame_utama.pack(padx=20, pady=10)
+
+# -------------------- Frame Kiri --------------------
+frame_kiri = tk.LabelFrame(
+    frame_utama,
+    text="📚 Daftar Buku",
+    font=("Segoe UI", 12, "bold"),
+    bg="#ecf9ff",
+    fg="#333",
+    padx=10,
+    pady=10,
+    labelanchor='n'
+)
+frame_kiri.grid(row=0, column=0, padx=20, sticky="n")
+
+listbox = tk.Listbox(frame_kiri, width=35, height=10, font=("Segoe UI", 10))
+books = [
+    "Dasar Python", "Desain UI/UX", "Teknologi Masa Depan",
+    "AI & Machine Learning", "Jaringan Komputer", "Algoritma dan Logika"
+]
+for book in books:
+    listbox.insert(tk.END, book)
+listbox.pack(pady=5)
+
+btn_pinjam = tk.Button(
+    frame_kiri,
+    text="📥 Pinjam Buku",
+    command=pinjam_buku,
+    bg="#4CAF50",
+    fg="white",
+    font=("Segoe UI", 10),
+    width=25
+)
+btn_pinjam.pack(pady=5)
+
+btn_kembalikan = tk.Button(
+    frame_kiri,
+    text="📤 Kembalikan Buku",
+    command=kembalikan_buku,
+    bg="#e74c3c",
+    fg="white",
+    font=("Segoe UI", 10),
+    width=25
+)
+btn_kembalikan.pack(pady=2)
+
+# -------------------- Frame Kanan --------------------
+frame_kanan = tk.LabelFrame(
+    frame_utama,
+    text="📄 Formulir Peminjaman",
+    font=("Segoe UI", 12, "bold"),
+    bg="#ecf9ff",
+    fg="#333",
+    padx=10,
+    pady=10,
+    labelanchor='n'
+)
+frame_kanan.grid(row=0, column=1, padx=20, sticky="n")
+
+label_nama = tk.Label(frame_kanan, text="🧑 Nama Anda:", font=("Segoe UI", 10), bg="#ecf9ff")
+label_nama.pack(anchor='w')
+
+entry_nama = tk.Entry(frame_kanan, font=("Segoe UI", 10), width=40)
+entry_nama.insert(0, "Kumala Hayati Yahika")  # Nama default
+entry_nama.pack(pady=5)
+
+label_output = tk.Label(frame_kanan, text="📋 Buku yang Dipinjam:", font=("Segoe UI", 10, "bold"), bg="#ecf9ff")
+label_output.pack(anchor='w', pady=(10, 3))
+
+list_output = tk.Listbox(frame_kanan, width=50, height=12, font=("Consolas", 10))
+list_output.pack()
+
+# -------------------- Jalankan --------------------
+root.mainloop()
+
+# -------------------- Tutup koneksi saat ditutup --------------------
+conn.close()
